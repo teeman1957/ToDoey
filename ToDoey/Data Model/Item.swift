@@ -7,8 +7,9 @@
 //
 
 import Foundation
+// you can just use Codable in place of Encodable, Decodable
 
-class Item {
+class Item: Encodable, Decodable {
     
     var title : String = ""
     var done : Bool = false

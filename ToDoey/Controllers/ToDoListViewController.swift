@@ -7,10 +7,11 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
-
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     var itemArray = [Item]()
     // var itemArray = ["Item1", "Item2", "Item3"]
@@ -19,6 +20,7 @@ class ToDoListViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        // print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
         loadItems()
     
@@ -55,29 +57,21 @@ class ToDoListViewController: UITableViewController {
     // Tableview delegate methods
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // print(itemArray[indexPath.row])
-        
-        /* below is the long method for setting the done Boolean
-        if itemArray[indexPath.row].done == false {
-            itemArray[indexPath.row].done = true
-        } else {
-            itemArray[indexPath.row].done = false
-        }
-         
-         the next method is shorter and cleaner
-        */
-        
+        // reverses current boolean from true to false or false to true, instead of if statement
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+        // update other properties but what if you want to change the text of an entry?
+        // itemArray[indexPath.row].title = "Completed"
+        
+        // delete the selected row, add a confirmation dialogue?
+        // you must delete from context first, otherwise app will crash cause indexPath.row no longer
+        // exists in array
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
+        
         self.saveItems()
         
-        
-        /* if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
-        */
-        // stop it from staying grey, instead flashes grey then retruns to white
+        // keeps the selected tableview row from staying selected color, just flashes then back to normal
         tableView.deselectRow(at: indexPath, animated: true)
         
     }
@@ -91,8 +85,10 @@ class ToDoListViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             // what will happen once user clicks the Add Item button
-            let newItem = Item()
+            
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             self.itemArray.append(newItem)
             
             self.saveItems()
@@ -111,33 +107,121 @@ class ToDoListViewController: UITableViewController {
     }
     
     func saveItems() {
-        let encoder = PropertyListEncoder()
-        
+        // this is a "commit" to the database
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            
+            try context.save() // commit occurs here
         } catch {
-            print("error writing file \(error)")
+            print("error saving data \(error)")
         }
         
         self.tableView.reloadData()
     }
 
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-            itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("error loading data \(error)")
-            }
-        }
-        
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+
+        print("request is \(request)")
         do {
-            
+            itemArray = try context.fetch(request)
+        } catch {
+            print("error on fetch /(error)")
+        }
+        self.tableView.reloadData()
+    }
+    
+}
+
+extension ToDoListViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        
+        // the [cd] indicates to ignore case and diacritics
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        request.sortDescriptors  = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        loadItems(with: request)
+    
+    }
+   
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItems()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

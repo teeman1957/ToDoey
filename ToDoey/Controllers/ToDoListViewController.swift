@@ -12,6 +12,11 @@ import CoreData
 class ToDoListViewController: UITableViewController {
     
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var selectedCategory : Category? {
+        didSet {
+            loadItems()
+        }
+    }
     
     var itemArray = [Item]()
     // var itemArray = ["Item1", "Item2", "Item3"]
@@ -21,8 +26,6 @@ class ToDoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-        
-        loadItems()
     
     }
 
@@ -87,6 +90,7 @@ class ToDoListViewController: UITableViewController {
             // what will happen once user clicks the Add Item button
             
             let newItem = Item(context: self.context)
+            newItem.parentCategory = self.selectedCategory
             newItem.title = textField.text!
             newItem.done = false
             self.itemArray.append(newItem)
@@ -118,14 +122,24 @@ class ToDoListViewController: UITableViewController {
         self.tableView.reloadData()
     }
 
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
 
-        print("request is \(request)")
+        // print("request is \(request)")
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        } else {
+            request.predicate = categoryPredicate
+        }
+        
         do {
             itemArray = try context.fetch(request)
         } catch {
             print("error on fetch /(error)")
         }
+        
         self.tableView.reloadData()
     }
     
@@ -137,11 +151,11 @@ extension ToDoListViewController: UISearchBarDelegate {
         
         // the [cd] indicates to ignore case and diacritics
         
-        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
         
         request.sortDescriptors  = [NSSortDescriptor(key: "title", ascending: true)]
         
-        loadItems(with: request)
+        loadItems(with: request, predicate: predicate)
     
     }
    
@@ -154,95 +168,3 @@ extension ToDoListViewController: UISearchBarDelegate {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
